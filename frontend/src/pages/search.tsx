@@ -11,7 +11,7 @@ const Search = () => {
   const addToCartHandler = () => {};
 
   const isPrevPage = page > 1;
-  const isNextPage = page < 4;
+  const isNextPage = page < 5;
 
   return (
     <div className="product-search-page">
@@ -74,7 +74,7 @@ const Search = () => {
           >
             Prev
           </button>
-          <span>{page} of 4</span>
+          <span>{page} of 5</span>
           <button
             disabled={!isNextPage}
             onClick={() => setPage((prev) => prev + 1)}
