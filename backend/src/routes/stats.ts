@@ -8,10 +8,10 @@ const app = express.Router();
 app.get("/stats",adminOnly, getDashboardStats);
 
 // route - /api/v1/dashboard/pie
-app.get("/pie", adminOnly, getBarChart);
+app.get("/pie", adminOnly, getPieChart);
 
 // route - /api/v1/dashboard/bar
-app.get("/bar", adminOnly, getPieChart);
+app.get("/bar", adminOnly, getBarChart);
 
 // route - /api/v1/dashboard/line
 app.get("/line", adminOnly, getLineChart);

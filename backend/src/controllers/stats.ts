@@ -191,7 +191,55 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
 });
 
 export const getPieChart = TryCatch(async (req, res, next) => {
-  console.log("h")
+  let charts;
+  if (myCache.has("admin-pie-chart"))
+    charts = JSON.parse(myCache.get("admin-pie-chart")!);
+  else {
+    const [
+      processingOrder,
+      shippedOrder,
+      deliveredOrder,
+      categories,
+      productsCount,
+      outOfStock,
+    ] = await Promise.all([
+      Order.countDocuments({ status: "Processing" }),
+      Order.countDocuments({ status: "Shipped" }),
+      Order.countDocuments({ status: "Delivered" }),
+      Product.distinct("category"),
+      Product.countDocuments(),
+      Product.countDocuments({ stock: 0 }),
+    ]);
+
+    const orderFullfillment = {
+      processing: processingOrder,
+      shipped: shippedOrder,
+      delievered: deliveredOrder,
+    };
+
+    const productCategories = await getInventories({
+      categories,
+      productsCount,
+    });
+
+    const stockAvailablity = {
+      inStock: productsCount - outOfStock,
+      outOfStock,
+    };
+
+    charts = {
+      orderFullfillment,
+      productCategories,
+      stockAvailablity,
+    };
+
+    myCache.set("admin-pie-charts", JSON.stringify(charts));
+  }
+
+  return res.status(200).json({
+    success: true,
+    charts,
+  });
 });
 
 export const getBarChart = TryCatch(async (req, res, next) => {});
