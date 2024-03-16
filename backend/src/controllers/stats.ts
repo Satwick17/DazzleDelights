@@ -190,7 +190,9 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
   });
 });
 
-export const getPieChart = TryCatch(async (req, res, next) => {});
+export const getPieChart = TryCatch(async (req, res, next) => {
+  console.log("hi")
+});
 
 export const getBarChart = TryCatch(async (req, res, next) => {});
 
