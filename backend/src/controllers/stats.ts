@@ -3,13 +3,17 @@ import { TryCatch } from "../middlewares/error.js";
 import { Order } from "../models/order.js";
 import { Product } from "../models/product.js";
 import { User } from "../models/user.js";
-import { calculatePercentage, getInventories } from "../utils/features.js";
+import {
+  calculatePercentage,
+  getChartData,
+  getInventories,
+} from "../utils/features.js";
 
 export const getDashboardStats = TryCatch(async (req, res, next) => {
   let stats = {};
+  const key = "admin-stats";
 
-  if (myCache.has("admin-stats"))
-    stats = JSON.parse(myCache.get("admin-stats") as string);
+  if (myCache.has(key)) stats = JSON.parse(myCache.get(key) as string);
   else {
     const today = new Date();
     const sixMonthAgo = new Date();
@@ -143,7 +147,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
     const orderMonthlyRevenue = new Array(6).fill(0);
     lastSixMonthOrders.forEach((order) => {
       const creationDate = order.createdAt;
-      const monthDiff = today.getMonth() - creationDate.getMonth();
+      const monthDiff = (today.getMonth() - creationDate.getMonth() + 12) % 12;
 
       if (monthDiff < 6) {
         orderMonthCount[6 - monthDiff - 1] += 1;
@@ -181,7 +185,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
       latestTransactions: modifiedTransaction,
     };
 
-    myCache.set("admin-stats", JSON.stringify(stats));
+    myCache.set(key, JSON.stringify(stats));
   }
 
   return res.status(200).json({
@@ -192,9 +196,17 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
 
 export const getPieChart = TryCatch(async (req, res, next) => {
   let charts;
-  if (myCache.has("admin-pie-chart"))
-    charts = JSON.parse(myCache.get("admin-pie-chart")!);
+  const key = "admin-pie-chart";
+  if (myCache.has(key)) charts = JSON.parse(myCache.get(key)!);
   else {
+    const allOrdersPromise = Order.find({}).select([
+      "total",
+      "discount",
+      "subtotal",
+      "tax",
+      "shippingCharges",
+    ]);
+
     const [
       processingOrder,
       shippedOrder,
@@ -202,6 +214,10 @@ export const getPieChart = TryCatch(async (req, res, next) => {
       categories,
       productsCount,
       outOfStock,
+      allOrders,
+      allUsers,
+      adminUsers,
+      customerUsers,
     ] = await Promise.all([
       Order.countDocuments({ status: "Processing" }),
       Order.countDocuments({ status: "Shipped" }),
@@ -209,6 +225,10 @@ export const getPieChart = TryCatch(async (req, res, next) => {
       Product.distinct("category"),
       Product.countDocuments(),
       Product.countDocuments({ stock: 0 }),
+      allOrdersPromise,
+      User.find({}).select(["dob"]),
+      User.countDocuments({ role: "admin" }),
+      User.countDocuments({ role: "user" }),
     ]);
 
     const orderFullfillment = {
@@ -227,13 +247,51 @@ export const getPieChart = TryCatch(async (req, res, next) => {
       outOfStock,
     };
 
+    const grossIncome = allOrders.reduce(
+      (prev, order) => prev + (order.total || 0),
+      0
+    );
+    const discount = allOrders.reduce(
+      (prev, order) => prev + (order.discount || 0),
+      0
+    );
+    const productionCost = allOrders.reduce(
+      (prev, order) => prev + (order.shippingCharges || 0),
+      0
+    );
+    const burnt = allOrders.reduce((prev, order) => prev + (order.tax || 0), 0);
+    const marketingCost = Math.round(grossIncome * (30 / 100));
+    const netMargin = grossIncome - productionCost - burnt - marketingCost;
+
+    const revenueDistribution = {
+      netMargin,
+      discount,
+      productionCost,
+      burnt,
+      marketingCost,
+    };
+
+    const userAgeGroup = {
+      teen: allUsers.filter((i) => i.age < 20).length,
+      adult: allUsers.filter((i) => i.age >= 20 && i.age < 45).length,
+      old: allUsers.filter((i) => i.age >= 45).length,
+    };
+
+    const adminCustomer = {
+      admin: adminUsers,
+      customer: customerUsers,
+    };
+
     charts = {
       orderFullfillment,
       productCategories,
       stockAvailablity,
+      revenueDistribution,
+      userAgeGroup,
+      adminCustomer,
     };
 
-    myCache.set("admin-pie-charts", JSON.stringify(charts));
+    myCache.set(key, JSON.stringify(charts));
   }
 
   return res.status(200).json({
@@ -242,6 +300,64 @@ export const getPieChart = TryCatch(async (req, res, next) => {
   });
 });
 
-export const getBarChart = TryCatch(async (req, res, next) => {});
+export const getBarChart = TryCatch(async (req, res, next) => {
+  let charts;
+  const key = "admin-bar-chart";
+
+  if (myCache.has(key)) charts = JSON.parse(myCache.get(key)!);
+  else {
+    const today = new Date();
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    const sixMonthProductPromise = Product.find({
+      createdAt: {
+        $gte: sixMonthsAgo,
+        $lte: today,
+      },
+    }).select("createdAt");
+
+    const sixMonthUsersPromise = User.find({
+      createdAt: {
+        $gte: sixMonthsAgo,
+        $lte: today,
+      },
+    }).select("createdAt");
+
+    const twelveMonthOrdersPromise = Order.find({
+      createdAt: {
+        $gte: twelveMonthsAgo,
+        $lte: today,
+      },
+    }).select("createdAt");
+
+    const [products, users, orders] = await Promise.all([
+      sixMonthProductPromise,
+      sixMonthUsersPromise,
+      twelveMonthOrdersPromise,
+    ]);
+
+    const productCounts = getChartData({ length: 6, today, docArr: products });
+    const usersCounts = getChartData({ length: 6, today, docArr: users });
+    const ordersCounts = getChartData({ length: 12, today, docArr: orders });
+
+    charts = {
+      users: usersCounts,
+      products: productCounts,
+      orders: ordersCounts,
+    };
+
+    myCache.set(key, JSON.stringify(charts));
+  }
+
+  res.status(200).json({
+    success: true,
+    charts,
+  });
+});
 
 export const getLineChart = TryCatch(async (req, res, next) => {});
