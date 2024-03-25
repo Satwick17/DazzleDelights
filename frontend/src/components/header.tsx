@@ -7,18 +7,24 @@ import {
   FaUser,
 } from "react-icons/fa";
 import { useState } from "react";
+import { User } from "../types/types";
 
-const user = { _id: "", role: "" };
-const Header = () => {
+interface PropsType {
+  user: User | null;
+}
+
+const Header = ({ user }: PropsType) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-  const logoutHandler = () =>{
+  const logoutHandler = () => {
     setIsOpen(false);
-  }
+  };
 
   return (
     <nav className="header">
-      <Link onClick={() => setIsOpen(false)} to={"/"}>Home</Link>
+      <Link onClick={() => setIsOpen(false)} to={"/"}>
+        Home
+      </Link>
       <Link onClick={() => setIsOpen(false)} to={"/search"}>
         <FaSearch />
       </Link>
@@ -33,10 +39,14 @@ const Header = () => {
           <dialog open={isOpen}>
             <div>
               {user.role === "admin" && (
-                <Link onClick={() => setIsOpen(false)} to="/admin/dashboard">Admin</Link>
+                <Link onClick={() => setIsOpen(false)} to="/admin/dashboard">
+                  Admin
+                </Link>
               )}
 
-              <Link onClick={() => setIsOpen(false)} to="/orders">Orders</Link>
+              <Link onClick={() => setIsOpen(false)} to="/orders">
+                Orders
+              </Link>
               <button onClick={logoutHandler}>
                 <FaSignOutAlt />
               </button>
