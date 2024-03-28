@@ -51,7 +51,7 @@ const App = () => {
         dispatch(userExist(data.user));
       } else dispatch(userNotExist());
     });
-  });
+  }, []);
   return loading ? (
     <Loader />
   ) : (
