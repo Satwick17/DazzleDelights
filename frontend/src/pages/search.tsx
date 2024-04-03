@@ -7,6 +7,9 @@ import {
 import toast from "react-hot-toast";
 import { CustomError } from "../types/apiTypes";
 import { Skeleton } from "../components/loader";
+import { CartItem } from "../types/types";
+import { addToCart } from "../redux/reducer/cartReducer";
+import { useDispatch } from "react-redux";
 
 const Search = () => {
   const {
@@ -21,6 +24,8 @@ const Search = () => {
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
 
+  const dispatch = useDispatch();
+
   const {
     isLoading: productLoading,
     data: searchedProduct,
@@ -33,8 +38,13 @@ const Search = () => {
     page,
     price: maxPrice,
   });
-  console.log(searchedProduct);
-  const addToCartHandler = () => {};
+
+  const addToCartHandler = (cartItem: CartItem) => {
+    if (cartItem.stock < 1) toast.error("Out of Stock");
+
+    dispatch(addToCart(cartItem));
+    toast.success("Added to Cart");
+  };
 
   const isPrevPage = page > 1;
   const isNextPage = page < 5;
@@ -134,6 +144,3 @@ const Search = () => {
 };
 
 export default Search;
-
-
-

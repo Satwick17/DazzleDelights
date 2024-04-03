@@ -7,7 +7,7 @@ type ProductProps = {
   name: string;
   price: number;
   stock: number;
-  handler: () => void;
+  handler: (cartItem: CartItem) => string | undefined;
 };
 
 const ProductCard = ({
@@ -25,7 +25,11 @@ const ProductCard = ({
       <span>₹{price}</span>
 
       <div>
-        <button onClick={() => handler()}>
+        <button
+          onClick={() =>
+            handler({ productId, price, name, photo, stock, quantity: 1 })
+          }
+        >
           <FaPlus />
         </button>
       </div>
