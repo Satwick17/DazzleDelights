@@ -53,7 +53,7 @@ const Cart = () => {
           setIsValidCouponCode(true);
           dispatch(calculatePrice());
         })
-        .catch((e) => {
+        .catch(() => {
           dispatch(discountAplied(0));
           setIsValidCouponCode(false);
           dispatch(calculatePrice());
@@ -123,3 +123,5 @@ const Cart = () => {
 };
 
 export default Cart;
+
+
